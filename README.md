@@ -1,1 +1,1 @@
-# LifelikeAvatarMotionProcessor
+# LAMP(LifelikeAvatarMotionProcessor)
