@@ -74,3 +74,7 @@ crashlytics-build.properties
 #
 *.pyc
 /__pycache__/
+obj/
+.csproj
+.sln
+.vsconfig
