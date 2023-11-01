@@ -9,10 +9,10 @@ from array import array
 import struct
 
 """ external dll """
-os.environ['PATH'] = 'D:\\TJ_develop\\MW\\MW_HumanMotionRetargeting\\Libraries\\OpenSceneGraph_354\\bin_x64\\vs2015' + os.pathsep + os.environ['PATH']
-os.environ['PATH'] = 'D:\\TJ_develop\\MW\\MW_HumanMotionRetargeting\\Libraries\\lapack\\bin' + os.pathsep + os.environ['PATH']
+os.environ['PATH'] = 'vs2015' + os.pathsep + os.environ['PATH']
+os.environ['PATH'] = 'lapack/bin' + os.pathsep + os.environ['PATH']
 
-lib = ctypes.WinDLL('D:/TJ_develop/MW/MW_HumanMotionRetargeting/Examples/MBS_CDLL/x64/Release/MBS_CDLL')
+lib = ctypes.WinDLL('MBS_CDLL')
 
 """ define dll in/out """
 lib.LOAD_SRC_TAR_MBS.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
