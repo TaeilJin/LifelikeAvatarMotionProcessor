@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Text;
+using System.IO;
 using UnityEngine.Assertions;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -43,10 +44,10 @@ public abstract class RealTimeAnimation : MonoBehaviour {
 
 	public void update_pose(int index, Matrix4x4[][] _motion, Actor _actor)
 	{
-		//Debug.Log("Frame " + index + "/" + _motion.GetLength(0));
-		for (int j = 0; j < _actor.Bones.Length; j++)
+		//Debug.Log(_actor.name + " " + _actor.Bones[0].GetName());
+		for (int j = 0; j < _actor.Bones.Length; j++){
 			_actor.Bones[j].Transform.SetPositionAndRotation(_motion[index][j].GetPosition(), _motion[index][j].GetRotation());
-
+		}
 	}
 	public void update_pose(int index, Matrix4x4[][] _motion, Matrix4x4[] _root, Actor _actor)
 	{
@@ -116,6 +117,38 @@ public abstract class RealTimeAnimation : MonoBehaviour {
 		}
 		return 1f;
 	}
+	public StreamWriter CreateFile(string foldername, string name, bool newfile, string root_extension)
+	{
+		string filename = string.Empty;
+		string folder = foldername;
+		if (!File.Exists(folder))
+		{
+			Directory.CreateDirectory(folder);
+			folder = folder + '/';
+		}
+		else
+			folder = folder + "/";
+		if (!File.Exists(folder + name + root_extension))
+		{
+			filename = folder + name + root_extension;
+		}
+		else
+		{
+			if (newfile)
+			{
+				int i = 1;
+				while (File.Exists(folder + name + "_" + i + "_" + root_extension))
+				{
+					i += 1;
+				}
+				filename = folder + name + "_" + i + "_" + root_extension;
+			}
+			else
+				filename = folder + name + root_extension;
+		}
+		return File.CreateText(filename);
+	}
+
 
 	public StringBuilder WriteFloat(StringBuilder sb_, float x, bool first)
 	{

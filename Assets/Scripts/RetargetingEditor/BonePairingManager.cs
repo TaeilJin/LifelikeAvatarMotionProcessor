@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -52,7 +51,6 @@ public class BonePairingManager : MonoBehaviour
     void Update()
     {
         if (NullErrorCheck()) return;
-
     }
 
     IEnumerator ErrorMsg(string msg, float sec)
@@ -251,6 +249,11 @@ public class BonePairingManager : MonoBehaviour
                 output[i, 1] = ctrl.BoneName;
                 output[i, 2] = ctrl.BoneName_T;
 
+                //output[i, 3] = S_Actor.FindBone(ctrl.BoneName).GetParent().GetName();
+                //output[i, 4] = T_Actor.FindBone(ctrl.BoneName_T).GetParent().GetName();
+
+
+
                 Vector3 srcAxisX = GetNormalizedDir(S_Actor.Bones[curIdx_S].Transform.position, 
                     S_Actor.Bones[curIdx_S].Transform.rotation.GetInverse(), Vector3.right);
                 Vector3 srcAxisY = GetNormalizedDir(S_Actor.Bones[curIdx_S].Transform.position,
@@ -268,26 +271,27 @@ public class BonePairingManager : MonoBehaviour
                 Debug.Log(" src axis y " + srcAxisY + " tar axis y " + tarAxisY + " tar axis y2 " + GetNormalizedDir(T_Actor.Bones[curIdx_T].Transform.position, T_Actor.Bones[curIdx_T].Transform.rotation.GetInverse(), srcAxisY));
                 Debug.Log(" src axis z " + srcAxisZ + " tar axis z " + tarAxisZ + " tar axis z2 " + GetNormalizedDir(T_Actor.Bones[curIdx_T].Transform.position, T_Actor.Bones[curIdx_T].Transform.rotation.GetInverse(), srcAxisZ));
 
-                output[i, 3] = srcAxisX.x.ToString();
-                output[i, 4] = srcAxisX.y.ToString();
-                output[i, 5] = srcAxisX.z.ToString();
-                output[i, 6] = tarAxisX.x.ToString();
-                output[i, 7] = tarAxisX.y.ToString();
-                output[i, 8] = tarAxisX.z.ToString();
-
-                output[i, 9] = srcAxisY.x.ToString();
-                output[i, 10] = srcAxisY.y.ToString();
-                output[i, 11] = srcAxisY.z.ToString();
-                output[i, 12] = tarAxisY.x.ToString();
-                output[i, 13] = tarAxisY.y.ToString();
-                output[i, 14] = tarAxisY.z.ToString();
-
-                output[i, 15] = srcAxisZ.x.ToString();
-                output[i, 16] = srcAxisZ.y.ToString();
-                output[i, 17] = srcAxisZ.z.ToString();
-                output[i, 18] = tarAxisZ.x.ToString();
-                output[i, 19] = tarAxisZ.y.ToString();
-                output[i, 20] = tarAxisZ.z.ToString();
+                int start = 0;
+                output[i, start+3] = srcAxisX.x.ToString();
+                output[i, start+4] = srcAxisX.y.ToString();
+                output[i, start+5] = srcAxisX.z.ToString();
+                output[i, start+6] = tarAxisX.x.ToString();
+                output[i, start+7] = tarAxisX.y.ToString();
+                output[i, start+8] = tarAxisX.z.ToString();
+                         
+                output[i, start+9] = srcAxisY.x.ToString();
+                output[i, start+10] = srcAxisY.y.ToString();
+                output[i, start+11] = srcAxisY.z.ToString();
+                output[i, start+12] = tarAxisY.x.ToString();
+                output[i, start+13] = tarAxisY.y.ToString();
+                output[i, start+14] = tarAxisY.z.ToString();
+                          
+                output[i, start+15] = srcAxisZ.x.ToString();
+                output[i, start+16] = srcAxisZ.y.ToString();
+                output[i, start+17] = srcAxisZ.z.ToString();
+                output[i, start+18] = tarAxisZ.x.ToString();
+                output[i, start+19] = tarAxisZ.y.ToString();
+                output[i, start+20] = tarAxisZ.z.ToString();
 
                 i++;
             }

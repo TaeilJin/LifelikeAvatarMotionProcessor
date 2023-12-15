@@ -26,13 +26,15 @@ public enum RecordingState //! ZedBodyRecordingManager ¿¡ ÀÖ´Â enum Á¤ÀÇ¸¦ ¼öÁ¤Ç
     TESTPLAYING,
     PLAYING,
 }
-public class MotionData : ScriptableObject
+public class MotionDataFile : ScriptableObject
 {
-   
     public class BVHFile
     {
         public FileInfo FILE_Info;
-        public Matrix4x4[][] Motion;
+        public Matrix4x4[][] Motion, MotionWR;
+        public Matrix4x4[] RootTrajectory = new Matrix4x4[0];
+        public Matrix4x4[] seenByChild = new Matrix4x4[0];
+        public int RightShoulder, LeftShoulder, RightUpLeg, LeftUpLeg;
         public int nFrames;
         public float Framerate;
         public bool Import;
@@ -65,6 +67,70 @@ public class MotionData : ScriptableObject
             for (int i = 0; i < numRows; i++)
             {
                 Motion[i] = new Matrix4x4[numCols];
+            }
+        }
+
+
+        // find right,left shoulder & upleg
+        public void FindUpperBody(string rightshoulder, string leftshoulder, string righthip, string lefthip)
+        {
+            Skeleton.Hierarchy.Bone rs = skel_hierarchy.FindBoneContains(rightshoulder);
+            RightShoulder = rs == null ? 0 : rs.Index;
+            Skeleton.Hierarchy.Bone ls = skel_hierarchy.FindBoneContains(leftshoulder);
+            LeftShoulder = ls == null ? 0 : ls.Index;
+            Skeleton.Hierarchy.Bone rh = skel_hierarchy.FindBoneContains(righthip);
+            RightUpLeg = rh == null ? 0 : rh.Index;
+            Skeleton.Hierarchy.Bone lh = skel_hierarchy.FindBoneContains(lefthip);
+            LeftUpLeg = lh == null ? 0 : lh.Index;
+
+        }
+        // genreate root trajectory of motion
+        public void GenerateRootTrajectory(int start, int end)
+        {
+            RootTrajectory = new Matrix4x4[end - start + 1];
+            MotionWR = new Matrix4x4[end - start + 1][];
+            for (int n = start, k = 0; n <= end; n++, k++)
+            {
+                RootTrajectory[k] = GetRoot(n, 0.0f);
+
+                MotionWR[k] = new Matrix4x4[skel_hierarchy.Bones.Length];
+                for (int j = 0; j < skel_hierarchy.Bones.Length; j++)
+                    MotionWR[k][j] = Motion[n][j].GetRelativeTransformationTo(RootTrajectory[k]);
+            }
+          
+            GenerateRootRelative();
+        }
+        public Matrix4x4 GetRoot(int index, float y_offset)
+        {
+            //vector_x
+            Vector3 vec_shoulder = Motion[index][LeftShoulder].GetPosition() - Motion[index][RightShoulder].GetPosition();
+            vec_shoulder = vec_shoulder.normalized;
+            Vector3 vec_upleg = Motion[index][LeftUpLeg].GetPosition() - Motion[index][RightUpLeg].GetPosition();
+            vec_upleg = vec_upleg.normalized;
+            Vector3 vec_across = vec_shoulder + vec_upleg;
+            vec_across = vec_across.normalized;
+            //vector_forward
+            Vector3 vec_forward = Vector3.Cross(-1.0f * vec_across, Vector3.up);
+            //vector_x_new
+            Vector3 vec_right = Vector3.Cross(-1.0f * vec_forward, Vector3.up);
+            //root matrix 
+            Matrix4x4 root_interaction = Matrix4x4.identity;
+            Vector4 vec_x = new Vector4(vec_right.x, vec_right.y, vec_right.z, 0.0f);
+            Vector4 vec_z = new Vector4(vec_forward.x, vec_forward.y, vec_forward.z, 0.0f);
+            Vector4 vec_y = new Vector4(0.0f, 1.0f, 0.0f, 0.0f);
+            Vector3 pos__ = Motion[index][0].GetPosition();
+            Vector4 pos_h = new Vector4(pos__.x, y_offset, pos__.z, 1.0f);
+            root_interaction.SetColumn(0, vec_x); root_interaction.SetColumn(1, vec_y); root_interaction.SetColumn(2, vec_z);
+            root_interaction.SetColumn(3, pos_h);
+            //
+            return root_interaction;
+        }
+        public void GenerateRootRelative()
+        {
+            seenByChild = new Matrix4x4[RootTrajectory.Length - 1];
+            for (int n = 0; n < seenByChild.Length; n++)
+            {
+                seenByChild[n] = RootTrajectory[n + 1].GetRelativeTransformationTo(RootTrajectory[n]);
             }
         }
     }
@@ -173,12 +239,22 @@ public class MotionData : ScriptableObject
     public List<string> BVHFileNameList = new List<string>();
     public List<string> FBXFileNameList = new List<string>();
     public List<string> MotionTextFileNameList = new List<string>();
+    public Matrix4x4[][] Motion = null;
+    public Matrix4x4[][] MotionWR = null;
+    public Matrix4x4[] RootTrajectory = new Matrix4x4[0];
+    public Matrix4x4[] seenByChild = new Matrix4x4[0];
+    public string DirectoryName;
+    public string FileName;
+    public int Total_FileNumber = 0;
 
     public Actor Character;
 
     public int selectedData;
     public bool file_exist;
-    public int LeftShoulder, RightShoulder, LeftHip, RightHip;
+    public bool b_draw_root_trajectory;
+    [SerializeField]
+    public string LeftShoulder, RightShoulder, LeftHip, RightHip;
+    public int int_LS, int_RS, int_LH, int_RH;
     public float scale = 1.0f;
     public float Framerate = 30; // target framerate
     public bool LoadBVHDirectory(string Source, string type)
@@ -288,9 +364,9 @@ public class MotionData : ScriptableObject
                         }
                         //data.Source.AddBone(name, parent);
                         // Debug.Log("Bone " + name);
-                        BVHFiles[fileindex].skel_hierarchy.AddBone(name, parent);
-                        offsets.Add(offset);
-                        channels.Add(new int[0]);
+                        //BVHFiles[fileindex].skel_hierarchy.AddBone(name, parent);
+                        //offsets.Add(offset);
+                        //channels.Add(new int[0]);
                         index += 2;
                         break;
                     }
@@ -432,7 +508,13 @@ public class MotionData : ScriptableObject
                 }
             }
 
+            Matrix4x4[][] newMotion = BVHFiles[fileindex].MotionByForcedFPS(30);
+            BVHFiles[fileindex].Motion = newMotion;
+            BVHFiles[fileindex].nFrames = newMotion.Length;
 
+            Motion = BVHFiles[fileindex].Motion;
+            
+            FileName = BVHFiles[fileindex].FILE_Info.Name;
 
             b_true = true;
         }
@@ -445,6 +527,90 @@ public class MotionData : ScriptableObject
         return b_true;
     }
 
+    public bool GenerateRootTrOFFile(Actor _actor)
+    {
+        FindUpperBody(_actor,RightShoulder, LeftShoulder,RightHip,LeftHip);
+        GenerateRootTrajectory(_actor,0, Motion.GetLength(0) - 1);
+        return true;
+    }
+
+    // genreate root trajectory of motion
+    public void FindUpperBody(Actor _actor, string rightshoulder, string leftshoulder, string righthip, string lefthip)
+    {
+        Actor.Bone rs = _actor.FindBoneContains(rightshoulder);
+        int_RS = rs == null ? 0 : rs.Index;
+        Actor.Bone ls = _actor.FindBoneContains(leftshoulder);
+        int_LS = ls == null ? 0 : ls.Index;
+        Actor.Bone rh = _actor.FindBoneContains(righthip);
+        int_RH = rh == null ? 0 : rh.Index;
+        Actor.Bone lh = _actor.FindBoneContains(lefthip);
+        int_LH = lh == null ? 0 : lh.Index;
+
+    }
+
+    public void GenerateRootTrajectory(Actor _actor, int start, int end)
+    {
+        RootTrajectory = new Matrix4x4[end - start + 1];
+        MotionWR = new Matrix4x4[end - start + 1][];
+        for (int n = start, k = 0; n <= end; n++, k++)
+        {
+            RootTrajectory[k] = GetRoot(n, 0.0f);
+
+            MotionWR[k] = new Matrix4x4[_actor.Bones.Length];
+            for (int j = 0; j < _actor.Bones.Length; j++)
+                MotionWR[k][j] = Motion[n][j].GetRelativeTransformationTo(RootTrajectory[k]);
+        }
+
+        GenerateRootRelative();
+    }
+    public Matrix4x4 GetRoot(int index, float y_offset)
+    {
+        //vector_x
+        Vector3 vec_shoulder = Motion[index][int_LS].GetPosition() - Motion[index][int_RS].GetPosition();
+        vec_shoulder = vec_shoulder.normalized;
+        Vector3 vec_upleg = Motion[index][int_LH].GetPosition() - Motion[index][int_RH].GetPosition();
+        vec_upleg = vec_upleg.normalized;
+        Vector3 vec_across = vec_shoulder + vec_upleg;
+        vec_across = vec_across.normalized;
+        //vector_forward
+        Vector3 vec_forward = Vector3.Cross(-1.0f * vec_across, Vector3.up);
+        //vector_x_new
+        Vector3 vec_right = Vector3.Cross(-1.0f * vec_forward, Vector3.up);
+        //root matrix 
+        Matrix4x4 root_interaction = Matrix4x4.identity;
+        Vector4 vec_x = new Vector4(vec_right.x, vec_right.y, vec_right.z, 0.0f);
+        Vector4 vec_z = new Vector4(vec_forward.x, vec_forward.y, vec_forward.z, 0.0f);
+        Vector4 vec_y = new Vector4(0.0f, 1.0f, 0.0f, 0.0f);
+        Vector3 pos__ = Motion[index][0].GetPosition();
+        Vector4 pos_h = new Vector4(pos__.x, y_offset, pos__.z, 1.0f);
+        root_interaction.SetColumn(0, vec_x); root_interaction.SetColumn(1, vec_y); root_interaction.SetColumn(2, vec_z);
+        root_interaction.SetColumn(3, pos_h);
+        //
+        return root_interaction;
+    }
+    public void GenerateRootRelative()
+    {
+        seenByChild = new Matrix4x4[RootTrajectory.Length - 1];
+        for (int n = 0; n < seenByChild.Length; n++)
+        {
+            seenByChild[n] = RootTrajectory[n + 1].GetRelativeTransformationTo(RootTrajectory[n]);
+        }
+    }
+    public void RenderRootTrajectory(int fileindex)
+    {
+        if (b_draw_root_trajectory && BVHFiles[fileindex].RootTrajectory.Length>0)
+        {
+            UltiDraw.Begin();
+            int framewidth = 30;
+            for (int i = 0; i < Mathf.RoundToInt(BVHFiles[fileindex].RootTrajectory.Length / framewidth); i++)
+            {
+                UltiDraw.DrawWiredSphere(BVHFiles[fileindex].RootTrajectory[framewidth * i].GetPosition(), BVHFiles[fileindex].RootTrajectory[framewidth * i].rotation, 0.1f, UltiDraw.Orange, UltiDraw.Black);
+                UltiDraw.DrawTranslateGizmo(BVHFiles[fileindex].RootTrajectory[framewidth * i].GetPosition(), BVHFiles[fileindex].RootTrajectory[framewidth * i].rotation, 0.1f);
+                //UltiDraw.DrawTranslateGizmo(Files[fileindex].Motion[framewidth * i][5].GetPosition(), Files[fileindex].Motion[framewidth * i][5].rotation, 0.1f);
+            }
+            UltiDraw.End();
+        }
+    }
     public BVHFile GetBVHData(int fileindex)
     {
         return BVHFiles[fileindex];
@@ -523,6 +689,7 @@ public class MotionData : ScriptableObject
             //data.Source = new MotionData.Hierarchy();
             FBXFiles[fileindex].skel_hierarchy = new Skeleton.Hierarchy();
             FBXFiles[fileindex].Character = Character;
+            Debug.Log("Character length " + Character.Bones.Length);
             for (int i = 0; i < Character.Bones.Length; i++)
             {
                 FBXFiles[fileindex].skel_hierarchy.AddBone(Character.Bones[i].GetName(), Character.Bones[i].GetParent() == null ? "None" : Character.Bones[i].GetParent().GetName());
@@ -546,13 +713,14 @@ public class MotionData : ScriptableObject
                 {
                     //data.Frames[i].World[j] = Character.Bones[j].Transform.GetWorldMatrix();
                     FBXFiles[fileindex].Motion[i][j] = Character.Bones[j].Transform.GetWorldMatrix();
+                    
                 }
             }
 
             
             //Add Scene
             //CreateScene("Assets");
-            
+
             //EditorUtility.SetDirty(Motion);
 
 
@@ -568,7 +736,10 @@ public class MotionData : ScriptableObject
                     FBXFiles[fileindex].Motion[k] = (Matrix4x4[])reference.Clone();
                 }
             }
-
+            
+            Motion = FBXFiles[fileindex].Motion;
+            DirectoryName = FBXFiles[fileindex].FILE_Info.DirectoryName;
+            FileName = FBXFiles[fileindex].FILE_Info.Name;
 
 
             b_true = true;
@@ -642,6 +813,7 @@ public class MotionData : ScriptableObject
             if (Directory.Exists(Source))
             {
                 DirectoryInfo info = new DirectoryInfo(Source);
+                Debug.Log("info " + info.FullName + type);
                 FileInfo[] items = info.GetFiles(type);
 
                 Debug.Log("type " + type + " are " + items.Length);
@@ -814,7 +986,7 @@ public class MotionData : ScriptableObject
         }
     }
 
-    private bool ImportMotionTextData(int fileindex, float scale)
+    public bool ImportMotionTextData(int fileindex, float scale)
     {
         bool b_true = false;
         string fileName = MotionTextFiles[fileindex].FILE_Info.Name.Replace("_motion.txt", "");
@@ -840,7 +1012,7 @@ public class MotionData : ScriptableObject
                         jointlist.Add(parse);
                     }
                 }
-                Debug.Log(" DOF " + jointlist.Count);
+                //Debug.Log(" DOF " + jointlist.Count);
                 if (jointlist.Count == 3 + (int)MotionTextFiles[fileindex].Character.Bones.Length * 4)
                 {
                     
@@ -871,7 +1043,9 @@ public class MotionData : ScriptableObject
                 }
             }
 
-
+            Motion = MotionTextFiles[fileindex].Motion;
+            DirectoryName = MotionTextFiles[fileindex].FILE_Info.DirectoryName;
+            FileName = MotionTextFiles[fileindex].FILE_Info.Name;
 
             b_true = true;
         }
@@ -926,6 +1100,7 @@ public class MotionData : ScriptableObject
         {
             Character = _actor;
 
+            Debug.Log("Let's see " + Character.Bones.Length);
             // Target Framerate
             EditorGUILayout.BeginHorizontal();
             Framerate = EditorGUILayout.FloatField("FBX Loader : Target FPS", Framerate);
@@ -951,6 +1126,17 @@ public class MotionData : ScriptableObject
     }
     public void BVH_inspector()
     {
+        //EditorGUILayout.BeginHorizontal(); // ³ªÁß¿¡ FBX, Motion TEXT File µµ ¾µ ¼ö ÀÖµµ·Ï inspector ¸¦ ¸¸µé´øÁö °¢ ÆÄÀÏÀÇ inspector ¿¡ Ãß°¡ÇÏµµ·Ï ÇÑ´Ù.
+        //LeftShoulder = EditorGUILayout.TextField("LeftShoulder", LeftShoulder);
+        //RightShoulder = EditorGUILayout.TextField("RightShoulder", RightShoulder);
+        //EditorGUILayout.EndHorizontal();
+
+        //EditorGUILayout.BeginHorizontal();
+        //LeftHip = EditorGUILayout.TextField("LeftHip", LeftHip);
+        //RightHip = EditorGUILayout.TextField("RightHip", RightHip);
+        //EditorGUILayout.EndHorizontal();
+
+
         EditorGUILayout.BeginHorizontal();
 
         if (Utility.GUIButton("Motion Loader: Load BVH Directory", Color.white, Color.red))
@@ -958,11 +1144,13 @@ public class MotionData : ScriptableObject
             EditorApplication.delayCall += () =>
             {
                 string dataPath = EditorUtility.OpenFolderPanel("BVH Folder", "", "Assets");
+                DirectoryName = dataPath;
                 file_exist = LoadBVHDirectory(dataPath, "*.bvh");
             };
         }
         EditorGUILayout.EndHorizontal();
 
+       
         if (BVHFileNameList.Count > 0)
         {
             EditorGUILayout.BeginHorizontal();
@@ -972,6 +1160,7 @@ public class MotionData : ScriptableObject
             if (Utility.GUIButton("Motion Loader : Import BVH Data", Color.white, Color.red))
             {
                 ImportBVHData(selectedData, scale);
+                //GenerateRootTrajectory(selectedData);
             }
          
             EditorGUILayout.EndHorizontal();
@@ -985,20 +1174,18 @@ public class MotionData : ScriptableObject
                 CreateActor(selectedData);
             }
 
-            EditorGUILayout.BeginHorizontal();
-            LeftShoulder = EditorGUILayout.IntField("LeftShoulder", LeftShoulder);
-            RightShoulder = EditorGUILayout.IntField("RightShoulder", RightShoulder);
-            EditorGUILayout.EndHorizontal();
+            
 
             EditorGUILayout.BeginHorizontal();
-            LeftHip = EditorGUILayout.IntField("LeftHip", LeftHip);
-            RightHip = EditorGUILayout.IntField("RightHip", RightHip);
+            GUILayout.FlexibleSpace();  // °íÁ¤µÈ ¿©¹éÀ» ³Ö½À´Ï´Ù.
+                                        //EditorGUILayout.LabelField("b_connect", GUILayout.Width(100f));
+            b_draw_root_trajectory = EditorGUILayout.Toggle("b_draw_root_trajectory", b_draw_root_trajectory);
+            GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();
         }
         
 
     }
-
     public void MotionTextFile_inspector(Actor _actor)
     {
         Utility.ResetGUIColor();
@@ -1038,6 +1225,7 @@ public class MotionData : ScriptableObject
     
         
     }
+   
     public void clearFile()
     {
         BVHFiles.Initialize();

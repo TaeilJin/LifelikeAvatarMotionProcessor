@@ -8,7 +8,7 @@ public class BodyRetargetingManager : RealTimeAnimation
 {
   
     //Using Motion Data Input
-    public MotionData _MotionData;
+    public MotionDataFile _MotionData;
     //Using Human-Object Motion Input
     public EnvMotionData[] _envMotionData;
     public bool existing_envMotionData;
@@ -26,6 +26,8 @@ public class BodyRetargetingManager : RealTimeAnimation
     public Transform base_offset = null;
 
     public bool play_data = false;
+    public bool b_data = false;
+
     public int frameIdx = 0;
     public int TotalFrames = 0;
     public bool save_data = false;
@@ -33,10 +35,14 @@ public class BodyRetargetingManager : RealTimeAnimation
     {
         _tcpClient = new TCPClient();
         _tcpClient.Setup("143.248.6.198",80);
+        _MotionData = ScriptableObject.CreateInstance<MotionDataFile>();
+        _retargetingUtil = ScriptableObject.CreateInstance<MW_RETARGET_Utils>();
+        existing_envMotionData = false;
+
     }
     protected override void Feed()
     {
-        if (play_data)
+        if (play_data || b_data)
         {
             if (frameIdx > TotalFrames)
             {
@@ -53,7 +59,28 @@ public class BodyRetargetingManager : RealTimeAnimation
             if (selectedOption == MotionData_Type.ALL || selectedOption == MotionData_Type.BVH_MOTIONTEXT || selectedOption == MotionData_Type.BVH)
             {
                 //Debug.Log("frame " + frameIdx + " / " + _MotionData.BVHFiles[_MotionData.selectedData].Motion.Length + " select " + _MotionData.BVHfiles[_MotionData.selectedData].Character.Bones.Length);
-                base.update_pose(frameIdx, _MotionData.BVHFiles[_MotionData.selectedData].Motion, actor_source);
+                //Debug.Log(" joint " + RetargetingTarget.actor.Bones.Length + "dof " + array.Length);
+
+                _retargetingUtil.RetargetingSource.CalcLocalFrames(out _retargetingUtil.RetargetingSource.jointdelta);
+                
+                for (int j = 0; j < actor_source.Bones.Length; j++)
+                {
+                    if (j == 0)
+                    {
+                        actor_source.Bones[0].Transform.position = _MotionData.BVHFiles[_MotionData.selectedData].Motion[frameIdx][j].GetPosition();// new Vector3(array[0], array[1], array[2]);
+                        actor_source.Bones[0].Transform.rotation = _MotionData.BVHFiles[_MotionData.selectedData].Motion[frameIdx][j].GetRotation();
+                    }
+                    else
+                    {
+                        //Debug.Log(" joint name " + RetargetingTarget.actor.Bones[j].GetName());
+                        Quaternion quat_lH = _MotionData.BVHFiles[_MotionData.selectedData].Motion[frameIdx][actor_source.Bones[j].Parent].GetRotation().GetInverse() * 
+                            _MotionData.BVHFiles[_MotionData.selectedData].Motion[frameIdx][j].GetRotation();
+
+                        _retargetingUtil.RetargetingSource.actor.Bones[j].Transform.localRotation = _retargetingUtil.RetargetingSource.Default_local_mat[j].GetRotation() * quat_lH;
+                    }
+                }
+
+                //base.update_pose(frameIdx, _MotionData.BVHFiles[_MotionData.selectedData].Motion, actor_source);
             }
             if (selectedOption == MotionData_Type.ALL || selectedOption == MotionData_Type.MOTIONTEXT)
             {
@@ -116,8 +143,8 @@ public class BodyRetargetingManager : RealTimeAnimation
             }
             
         }
-        
-        frameIdx++;
+        if(play_data)
+            frameIdx++;
     }
     protected override void Postprocess()
     {
@@ -129,20 +156,7 @@ public class BodyRetargetingManager : RealTimeAnimation
     }
     protected override void OnRenderObjectDerived()
     {
-        if (existing_envMotionData)
-        {
-            UltiDraw.Begin();
-            //Debug.Log("hihi " + existing_envMotionData);
-            int framewidth = 30;
-            Matrix4x4[] roots = _envMotionData[_MotionData.selectedData].RootTrajectory;
-            for (int i = 0; i < Mathf.RoundToInt(roots.Length / framewidth); i++)
-            {
-                UltiDraw.DrawWiredSphere(roots[framewidth * i].GetPosition(), roots[framewidth * i].rotation, 0.1f, UltiDraw.Orange, UltiDraw.Black);
-                UltiDraw.DrawTranslateGizmo(roots[framewidth * i].GetPosition(), roots[framewidth * i].rotation, 0.1f);
-                //UltiDraw.DrawTranslateGizmo(Files[FileOrder].Motion[framewidth * i][5].GetPosition(), Files[FileOrder].Motion[framewidth * i][5].rotation, 0.1f);
-            }
-            UltiDraw.End();
-        }
+       
     }
 
     protected override void Close()
@@ -161,9 +175,6 @@ public class BodyRetargetingManager : RealTimeAnimation
         public void Awake()
         {
             Target = (BodyRetargetingManager)target;
-            Target._MotionData = ScriptableObject.CreateInstance<MotionData>();
-            Target._retargetingUtil = ScriptableObject.CreateInstance<MW_RETARGET_Utils>();
-            Target.existing_envMotionData = false;
             selectedOption = serializedObject.FindProperty("selectedOption");
             selectedMode = serializedObject.FindProperty("selectedMode");
         }
@@ -231,37 +242,7 @@ public class BodyRetargetingManager : RealTimeAnimation
                     Target.TotalFrames = Target._MotionData.MotionTextFiles[Target._MotionData.selectedData].GetTotalFrames() - 1;
             }
             
-            // Human-Object Data Inspector
-            //if (Utility.GUIButton("make Human-Object Data", Color.white, Color.red))
-            //{
-            //    // for all data, inspector give a motion data inspector
-            //    Target._envMotionData = new EnvMotionData[Target._MotionData.BVHFiles.Length];
-            //    // import Files
-            //    for (int AnimFile_Num = 0; AnimFile_Num < Target._MotionData.BVHFiles.Length; AnimFile_Num++)
-            //    {
-            //        Debug.Log("load BVH File : " + Target._MotionData.ImportBVHData(AnimFile_Num, 1.0f));
-            //        Debug.Log("Motion Frames: " + Target._MotionData.BVHFiles[AnimFile_Num].Motion.GetLength(0));
-
-            //        // import Motion
-            //        Target._envMotionData[AnimFile_Num] = ScriptableObject.CreateInstance<EnvMotionData>();
-            //        Target._envMotionData[AnimFile_Num].Motion_only = (Matrix4x4[][])Target._MotionData.BVHFiles[AnimFile_Num].Motion.Clone(); // Motion
-            //        Target._envMotionData[AnimFile_Num].Sequences = new Sequence(0, Target._MotionData.BVHFiles[AnimFile_Num].Motion.Length-1); // Sequence
-            //        Target._envMotionData[AnimFile_Num].GenerateRootTrajectory(0, Target._MotionData.BVHFiles[AnimFile_Num].Motion.Length - 1); // RootTr , Motion Wr
-            //        Target._envMotionData[AnimFile_Num].StartRoot = Target._envMotionData[AnimFile_Num].RootTrajectory.First<Matrix4x4>();
-            //        Target._envMotionData[AnimFile_Num].EndRoot = Target._envMotionData[AnimFile_Num].RootTrajectory.Last<Matrix4x4>();
-            //        Target._envMotionData[AnimFile_Num].LeftShoulder = Target._MotionData.LeftShoulder;
-            //        Target._envMotionData[AnimFile_Num].RightShoulder = Target._MotionData.RightShoulder;
-            //        Target._envMotionData[AnimFile_Num].LeftHip = Target._MotionData.LeftHip;
-            //        Target._envMotionData[AnimFile_Num].RightHip = Target._MotionData.RightHip;
-            //        Target._envMotionData[AnimFile_Num].GenerateRootRelative(); // seenbyChild Root realtive
-            //    }
-            //    Target.existing_envMotionData = true;
-            //}
-            //if (Target.existing_envMotionData)
-            //    Target._envMotionData[Target._MotionData.selectedData].inspector();
-            
-
-            
+           
             // Play Motion Data
             if (!Application.isPlaying) return;
 
@@ -281,9 +262,12 @@ public class BodyRetargetingManager : RealTimeAnimation
             {
                 if (Utility.GUIButton("pause animation", Color.white, Color.red))
                 {
+                    Target.b_data = true;
                     Target.play_data = false;
                 }
             }
+            if (Target.play_data != true && Target._MotionData.BVHFiles.Length>0)
+                Target.frameIdx = EditorGUILayout.IntSlider(Target.frameIdx, 1, Target._MotionData.Motion.Length - 1);
 
             // Recording Function
             EditorGUILayout.BeginHorizontal();
@@ -337,7 +321,7 @@ public class BodyRetargetingManager : RealTimeAnimation
                             Target._MotionData.ImportFBXData(selectedData, 1.0f);
                             for (int frameidx = 0; frameidx < Target._MotionData.FBXFiles[selectedData].GetTotalFrames(); frameidx++)
                             {
-                                //Debug.Log("frame " + frameidx + " / " + Target._MotionData.FBXFiles[selectedData].GetTotalFrames());
+                                Debug.Log("frame " + frameidx + " / " + Target._MotionData.FBXFiles[selectedData].GetTotalFrames());
                                 Target.update_pose(frameidx, Target._MotionData.FBXFiles[selectedData].Motion,
                                 Target._retargetingUtil.RetargetingSource.actor);
                                 Target._retargetingUtil.RetargetingSource.CalcLocalFrames(out Target._retargetingUtil.RetargetingSource.jointdelta);
@@ -356,7 +340,7 @@ public class BodyRetargetingManager : RealTimeAnimation
                                 // record output pose 
                                 Target._MotionData.RecordingPose(Target.actor_target);
 
-
+                                
                             }
                             if (Target._MotionData.recordedList.Count > 0)
                             {
@@ -377,13 +361,24 @@ public class BodyRetargetingManager : RealTimeAnimation
                     {
                         for (int selectedData = 0; selectedData < Target._MotionData.BVHFiles.Length; selectedData++)
                         {
-                            Target._MotionData.recordedList.Clear();
+                            Target._MotionData.recordedList = new List<List<float>>();
+                            Target._MotionData.ImportBVHData(selectedData, Target._MotionData.scale);
 
+                            Matrix4x4[][] Tpose = (Matrix4x4[][])Target._MotionData.BVHFiles[selectedData].Motion.Clone();
+
+                            for (int j=0; j < Target.actor_source.Bones.Length; j++)
+                                Tpose[0][j] = Matrix4x4.identity;
+
+                            
                             for (int frameidx = 0; frameidx < Target._MotionData.BVHFiles[selectedData].GetTotalFrames(); frameidx++)
                             {
-                                //Debug.Log("frame " + frameIdx + " / " + _MotionData.BVHFiles[_MotionData.selectedData].Motion.Length + " select " + _MotionData.BVHFiles[_MotionData.selectedData].Character.Bones.Length);
-                                Target.update_pose(frameidx, Target._MotionData.BVHFiles[selectedData].Motion,
-                                Target.actor_source);
+                                if(frameidx == 0)
+                                    Target.update_pose(0, Tpose, Target.actor_source);
+                                else
+                                    Target.update_pose(frameidx, Target._MotionData.BVHFiles[selectedData].Motion, Target.actor_source);
+
+                                Debug.Log("frame " + frameidx + " / " + Target._MotionData.BVHFiles[selectedData].Motion.Length);
+
                                 Target._retargetingUtil.RetargetingSource.CalcLocalFrames(out Target._retargetingUtil.RetargetingSource.jointdelta);
                                 Target._retargetingUtil.RetargetingSource.CalcJoinDelta();
 
@@ -401,10 +396,12 @@ public class BodyRetargetingManager : RealTimeAnimation
                                 // record output pose 
                                 Target._MotionData.RecordingPose(Target.actor_target);
 
+                                
 
                             }
                             // save output poses (= motion ) in text file
-                            Target._MotionData.SavingRecordedData();
+                            Target._MotionData.SavingRecordedData(Target._MotionData.BVHFiles[selectedData].FILE_Info.FullName.Replace(".fbx", ""),
+                                    Target._retargetingUtil.RetargetingTarget.actor.name);
                             Target._MotionData.RecordingState = RecordingState.NONE;
                         }
                     }

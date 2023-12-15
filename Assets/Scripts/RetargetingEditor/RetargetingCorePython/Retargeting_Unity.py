@@ -12,7 +12,7 @@ import struct
 os.environ['PATH'] = 'vs2015' + os.pathsep + os.environ['PATH']
 os.environ['PATH'] = 'lapack/bin' + os.pathsep + os.environ['PATH']
 
-lib = ctypes.WinDLL('MBS_CDLL')
+lib = ctypes.WinDLL('D:\\TJ_develop\\MW\\MW_HumanMotionRetargeting\\Examples\\MBS_CDLL\\x64\\Release\\MBS_CDLL')
 
 """ define dll in/out """
 lib.LOAD_SRC_TAR_MBS.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
