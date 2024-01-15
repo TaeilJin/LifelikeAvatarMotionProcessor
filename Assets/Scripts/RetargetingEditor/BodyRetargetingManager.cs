@@ -25,11 +25,8 @@ public class BodyRetargetingManager : RealTimeAnimation
     public Actor actor_target = null;
     public Transform base_offset = null;
 
-    public bool play_data = false;
-    public bool b_data = false;
-
+    
     public int frameIdx = 0;
-    public int TotalFrames = 0;
     public bool save_data = false;
     protected override void Setup()
     {

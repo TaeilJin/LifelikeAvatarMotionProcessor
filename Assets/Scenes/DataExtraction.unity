@@ -2486,7 +2486,6 @@ MonoBehaviour:
   b_play: 0
   b_write: 0
   b_vis: 1
-  b_data: 0
   Environment:
     Pivot:
       e00: 0
@@ -3581,6 +3580,14 @@ PrefabInstance:
     - target: {fileID: 3397022211292181054, guid: 3241457d294b76b4bbd336ab93dd14b6, type: 3}
       propertyPath: m_Name
       value: EnvInspector (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 5860725827710905611, guid: 3241457d294b76b4bbd336ab93dd14b6, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6627664923454174218, guid: 3241457d294b76b4bbd336ab93dd14b6, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 3241457d294b76b4bbd336ab93dd14b6, type: 3}
