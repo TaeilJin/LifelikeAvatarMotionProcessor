@@ -104,67 +104,287 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using UnityEditor;
+using UnityEditorInternal;
 public class CircleMap
 {
 
     public Matrix4x4 Pivot = Matrix4x4.identity;
 
     public Vector3[] Map = new Vector3[0];
-    public Vector3[] Points = new Vector3[0];
+	public Vector3[] SamplePoints = new Vector3[0];
+    //public Vector3[] Points = new Vector3[0];
+	public Vector3[] HorizontalMap = new Vector3[0];
+	//public Vector3[] HorizontalPoints = new Vector3[0];
 
     public float Radius = 1f;
-    public int Samples = 10;
-    public int Rays = 10;
-    public LayerMask Mask = -1;
+    public int Samples = 7;
+    public int Rays = 20;
+	public int HorizontalSamples = 20;
+	public LayerMask Mask = -1;
 
+	public float[] SampleWeights;
+	public bool[] HitorNot;
     public CircleMap(float radius, int samples, int rays, LayerMask mask)
     {
-        Radius = radius;
-        Samples = samples;
-        Rays = rays;
+        //Radius = radius;
+        //Samples = samples;
+        //Rays = rays;
         Mask = mask;
-        Map = new Vector3[Rays * Samples];
-        Points = new Vector3[Rays * Samples];
-        for (int i = 0; i < Rays; i++)
-        {
-            float angle = 360f * (float)i / (float)Rays;
-            for (int j = 0; j < Samples; j++)
-            {
-                float distance = Radius * (float)(j + 1) / (float)Samples;
-                Map[i * Samples + j] = Quaternion.AngleAxis(angle, Vector3.up) * new Vector3(0f, 0f, distance);
-            }
-        }
-    }
+		UpdateSensors();
+	}
 
+	public void UpdateSensors()
+    {
+		Map = new Vector3[Rays * Samples];
+		//Points = new Vector3[Rays * Samples];
+		HorizontalMap = new Vector3[Rays];
+		//HorizontalPoints = new Vector3[Rays * HorizontalSamples];
+
+		SamplePoints = new Vector3[Rays * Samples + Rays * HorizontalSamples];
+		SampleWeights = new float[Rays * Samples + Rays * HorizontalSamples];
+		HitorNot = new bool[Rays * Samples + Rays * HorizontalSamples];
+		for (int i = 0; i < Rays; i++)
+		{
+			float angle = 360f * (float)i / (float)Rays;
+			HorizontalMap[i] = Quaternion.AngleAxis(angle, Vector3.up) * new Vector3(0f, 0f, Radius);
+			for (int j = 0; j < Samples; j++)
+			{
+				float distance = Radius * (float)(j + 1) / (float)Samples;
+				Map[i * Samples + j] = Quaternion.AngleAxis(angle, Vector3.up) * new Vector3(0f, 0f, distance);
+			}
+		}
+	}
     public void Sense(Matrix4x4 pivot)
     {
-        Pivot = pivot;
+		//UpdateSensors();
+		Pivot = pivot;
         Vector3 position = Pivot.GetPosition();
         Quaternion rotation = Quaternion.AngleAxis(Pivot.GetRotation().eulerAngles.y, Vector3.up);
 		for (int i = 0; i < Map.Length; i++)
         {
-            Points[i] = Project(position + rotation * Map[i]);
-        }
+            //Points[i] = Project(position + rotation * Map[i]);
+			SamplePoints[i] = Project(position + rotation * Map[i], out HitorNot[i]);
+		}
+		for (int j =0; j < HorizontalMap.Length; j++)
+        {
+			for(int k=0; k < HorizontalSamples; k++)
+            {
+				float height = 1.8f * (float)(k + 1) / (float)HorizontalSamples;
+				//HorizontalPoints[j * HorizontalSamples + k] = HorizontalProject(new Vector3(position.x, height, position.z), rotation * HorizontalMap[j]);
+				SamplePoints[Map.Length + j*HorizontalSamples + k] = HorizontalProject(new Vector3(position.x, height, position.z), rotation * HorizontalMap[j], 
+					out HitorNot[Map.Length + j * HorizontalSamples + k]);
+			}
+			
+		}
+
+		//Debug.Log(" SamplePoints " + SamplePoints.Length);
+		
     }
 
-    private Vector3 Project(Vector3 position)
+    private Vector3 Project(Vector3 position, out bool _hit)
     {
         RaycastHit hit;
-        Physics.Raycast(new Vector3(position.x, 100f, position.z), Vector3.down, out hit, float.PositiveInfinity, Mask);
+        _hit = Physics.Raycast(new Vector3(position.x, 100f, position.z), Vector3.down, out hit, float.PositiveInfinity, Mask);
         position = hit.point;
+		
         return position;
     }
-
-    public void Draw()
+	private Vector3 HorizontalProject(Vector3 position, Vector3 direction, out bool _hit)
+	{
+		RaycastHit hit;
+		if (Physics.Raycast(position, direction, out hit, float.PositiveInfinity, Mask))
+		{
+			position = hit.point;
+			_hit = true;
+		}
+		else
+		{
+			position = Vector3.one * 1000.0f;
+			_hit = false;
+		}
+		return position;
+	}
+	public void Draw()
     {
         UltiDraw.Begin();
-        for (int i = 0; i < Points.Length; i++)
-        {
-            UltiDraw.DrawCircle(Points[i], 0.025f, UltiDraw.Mustard.Transparent(1.0f));
-        }
-        UltiDraw.End();
+		//      for (int i = 0; i < Points.Length; i++)
+		//      {
+		//          //UltiDraw.DrawCircle(Points[i], 0.025f, UltiDraw.Mustard.Transparent(1.0f));
+		//	UltiDraw.DrawSphere(Points[i], Quaternion.identity, 0.02f, UltiDraw.Mustard);
+		//      }
+
+		//for (int i = 0; i < HorizontalPoints.Length; i++)
+		//{
+		//	//UltiDraw.DrawCircle(Points[i], 0.025f, UltiDraw.Mustard.Transparent(1.0f));
+		//	UltiDraw.DrawSphere(HorizontalPoints[i], Quaternion.identity, 0.02f, UltiDraw.Blue);
+		//}
+
+		for (int i = 0; i < SamplePoints.Length; i++)
+		{
+			//if (SampleWeights[i] > 0.01f)
+			{
+				//if (i < Map.Length)
+				//	UltiDraw.DrawSphere(SamplePoints[i], Quaternion.identity, 0.1f, UltiDraw.Mustard.Transparent(1.0f));
+				//else
+				if(HitorNot[i])
+					UltiDraw.DrawSphere(SamplePoints[i], Quaternion.identity, 0.1f, UltiDraw.Mustard.Transparent(1.0f));
+			}
+		}
+
+		UltiDraw.End();
     }
+
+	public static void CalcRelativeWeightsWithBounds(Vector3 targetJoint, Vector3[] Samples, float upperbound, float lowerbound,
+		out Vector3[] direction, out float[] mag, out float[] weight)
+	{
+		//float min = 10000.0f, sum = 0.0f, max = 0.0f;
+		// get min max distance with descriptors
+		int src_sp_size = Samples.Length;
+
+		mag = new float[src_sp_size];
+		direction = new Vector3[src_sp_size];
+		weight = new float[src_sp_size];
+
+		for (int j = 0; j < src_sp_size; j++)
+		{
+			Vector3 dir = targetJoint - Samples[j];
+			float mg = dir.magnitude; // dir
+
+			direction[j] = dir.normalized;
+			mag[j] = mg;
+
+			//if (mg < min)
+			//	min = mg;
+			//if (mg > max)
+			//	max = mg;
+			//sum += mg;
+		}
+
+		//Debug.Log("max " + max + " min  " + min + " sum " + sum);
+
+		//make fade out function 
+		for (int k = 0; k < src_sp_size; k++)
+		{
+
+			if (mag[k] > upperbound)
+				weight[k] = 0.0f;
+			else if (mag[k] < lowerbound)
+				weight[k] = 1.0f;
+			else
+            {
+				weight[k] = (lowerbound + upperbound) / (mag[k] + upperbound);
+            }
+
+		}
+		
+	}
+
+	public static void CalcRelativeWeights(Vector3 targetJoint, Vector3[] Samples, out Vector3[] direction, out float[] mag, out float[] weight)
+    {
+		float min = 10000.0f, sum = 0.0f, max = 0.0f;
+		// get min max distance with descriptors
+		int src_sp_size = Samples.Length;
+		
+		mag = new float[src_sp_size];
+		direction = new Vector3[src_sp_size];
+		weight = new float[src_sp_size];
+
+		for (int j = 0; j < src_sp_size; j++)
+		{
+			Vector3 dir = targetJoint - Samples[j];
+			float mg = dir.magnitude; // dir
+			
+			direction[j] = dir.normalized;
+			mag[j] = mg;
+
+			if (mg < min)
+				min = mg;
+			if (mg > max)
+				max = mg;
+			sum += mg;
+		}
+
+		//Debug.Log("max " + max + " min  " + min + " sum " + sum);
+
+		//make fade out function
+		float mid = sum / src_sp_size; float weightsum = 0.0f;
+		for (int k = 0; k < src_sp_size; k++)
+		{
+
+			if (mag[k] >= mid)
+			{
+				weight[k] = 0.0f;
+			}
+			else if (min < mag[k] && mag[k] < mid)
+			{
+				float w = 1 - (mag[k] - min) / (mid - min);
+				weight[k] = w;
+			}
+			weightsum += weight[k];
+		}
+
+		//make weight
+		for (int j = 0; j < src_sp_size; j++)
+		{
+			if (weightsum > 1e-3)
+			{
+				weight[j] = (weight[j] / weightsum); // * (direction[j] * mag[j] + tarSamples[j])
+			}
+            else
+            {
+				weight[j] = 0.0f;
+            }
+		}
+	}
+	public static void CalcNewPos(Vector3 SrcPoint, Vector3[] SrcSamples, Vector3[] TarSamples, out Vector3 TarPoint)
+    {
+		Vector3[] direction;
+		float[] mag;
+		float[] weight;
+		CalcRelativeWeights(SrcPoint, SrcSamples, out direction, out mag, out weight);
+
+		Vector3 NewJntPos = Vector3.zero;
+		for (int j = 0; j < SrcSamples.Length; j++)
+		{
+			Vector3 newPos = (weight[j]) * (direction[j] * mag[j] + TarSamples[j]);
+			NewJntPos += newPos;
+		}
+		TarPoint = NewJntPos;
+	}
+	public void inspector()
+    {
+		UltiDraw.Begin();
+		Utility.SetGUIColor(UltiDraw.Grey);
+
+		EditorGUILayout.BeginHorizontal(); // 나중에 FBX, Motion TEXT File 도 쓸 수 있도록 inspector 를 만들던지 각 파일의 inspector 에 추가하도록 한다.
+		EditorGUILayout.LabelField("Samples", GUILayout.Width(40f));
+		Samples = EditorGUILayout.IntField("", Samples, GUILayout.Width(40f));
+
+		EditorGUILayout.LabelField("Rays", GUILayout.Width(40f));
+		Rays = EditorGUILayout.IntField("", Rays, GUILayout.Width(40f));
+
+		EditorGUILayout.LabelField("Radius", GUILayout.Width(70f));
+		Radius = EditorGUILayout.FloatField(Radius, GUILayout.Width(50f));
+
+		EditorGUILayout.LabelField("HorizontalSamples", GUILayout.Width(70f));
+		HorizontalSamples = EditorGUILayout.IntField("", HorizontalSamples, GUILayout.Width(40f));
+
+		EditorGUILayout.LabelField("Mask", GUILayout.Width(50));
+		Mask = InternalEditorUtility.ConcatenatedLayersMaskToLayerMask(EditorGUILayout.MaskField(InternalEditorUtility.LayerMaskToConcatenatedLayersMask(Mask), InternalEditorUtility.layers, GUILayout.Width(90f)));
+
+		EditorGUILayout.EndHorizontal();
+
+		if (Utility.GUIButton(" Setup Sensors ", Color.white, Color.green))
+		{
+
+			UpdateSensors();
+		}
+
+
+
+		UltiDraw.End();
+	}
 
 }
 

@@ -13,6 +13,7 @@ public class JointContactMap
 		public Matrix4x4 Cur_Pose;
 		public int nFrames;
         public int Bone;
+		public string Name;
         public float RegularContacts;
         public Vector3 RegularContactPoints;
         public Vector3 RegularDistances;
@@ -32,9 +33,10 @@ public class JointContactMap
 			Identity
 		};
 
-		public JointContactSensor(int bone, float threshold, float FPS, LayerMask mask)
+		public JointContactSensor(int bone, string name, float threshold, float FPS, LayerMask mask)
         {
 			Bone = bone;
+			Name = name;
 			Threshold_collision = threshold;
 			Threshold_velocity = 0.03f;
 			Mask = mask;
@@ -312,14 +314,14 @@ public class JointContactMap
 
 			if (JointContactSensors[i].RegularContacts == 1f)
             {
-				Debug.Log("contact " + JointContactSensors[i].Bone);
+				//Debug.Log("contact " + JointContactSensors[i].Bone);
 				UltiDraw.DrawSphere(JointContactSensors[i].Cur_Pose.GetPosition(), JointContactSensors[i].Cur_Pose.GetRotation(),
 					2f * JointContactSensors[i].Threshold_collision, colors[i]);
 
 			}
 			else
 			{
-				Debug.Log("non contact " + JointContactSensors[i].Bone);
+				//Debug.Log("non contact " + JointContactSensors[i].Bone);
 				UltiDraw.DrawSphere(JointContactSensors[i].Cur_Pose.GetPosition(), JointContactSensors[i].Cur_Pose.GetRotation(),
 					2f * JointContactSensors[i].Threshold_collision, colors[i].Transparent(0.05f));
 			}

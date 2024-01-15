@@ -266,7 +266,7 @@ public class BodyRetargetingManager : RealTimeAnimation
                     Target.play_data = false;
                 }
             }
-            if (Target.play_data != true && Target._MotionData.BVHFiles.Length>0)
+            if (Target.play_data != true && Target._MotionData.BVHFiles != null)
                 Target.frameIdx = EditorGUILayout.IntSlider(Target.frameIdx, 1, Target._MotionData.Motion.Length - 1);
 
             // Recording Function

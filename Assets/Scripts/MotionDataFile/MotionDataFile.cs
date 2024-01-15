@@ -1100,7 +1100,7 @@ public class MotionDataFile : ScriptableObject
         {
             Character = _actor;
 
-            Debug.Log("Let's see " + Character.Bones.Length);
+            //Debug.Log("Let's see " + Character.Bones.Length);
             // Target Framerate
             EditorGUILayout.BeginHorizontal();
             Framerate = EditorGUILayout.FloatField("FBX Loader : Target FPS", Framerate);

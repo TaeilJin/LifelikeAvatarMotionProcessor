@@ -12,7 +12,9 @@ public abstract class RealTimeAnimation : MonoBehaviour {
 
 	public Actor _actor;
     public int Frame;
-	
+	public int TotalFrames;
+	public bool play_data;
+	public bool b_data;
 
 	public float AnimationTime {get; private set;}
 	public float PostprocessingTime {get; private set;}
@@ -29,6 +31,8 @@ public abstract class RealTimeAnimation : MonoBehaviour {
 
     private void Awake()
     {
+		int seed = 42; // 원하는 어떤 정수값이든 사용 가능
+		Random.InitState(seed);
 		Setup();
 	}
     void Start() {
@@ -62,6 +66,7 @@ public abstract class RealTimeAnimation : MonoBehaviour {
 	void FixedUpdate() {
 		Utility.SetFPS(Mathf.RoundToInt(GetFramerate()));
 		//Time.fixedDeltaTime = (float)1 / 30f;
+		//Utility.SetFPS(10);
 
 		System.DateTime t1 = Utility.GetTimestamp();
 

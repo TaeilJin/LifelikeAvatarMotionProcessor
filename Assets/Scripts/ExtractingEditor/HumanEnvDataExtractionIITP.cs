@@ -5,7 +5,7 @@ using UnityEditor;
 using System.Text;
 using System.IO;
 
-public class HumanEnvDataExtraction : RealTimeAnimation
+public class HumanEnvDataExtractionIITP : RealTimeAnimation
 {
     public Actor actor_source;
     // Using Motion Dataset 
@@ -15,7 +15,8 @@ public class HumanEnvDataExtraction : RealTimeAnimation
     public string LeftShoulder, RightShoulder, LeftHip, RightHip, LeftFoot, RightFoot, LeftToe, RightToe;
     public string Spine, LeftElbow, LeftHand, RightElbow, RightHand;
     public float character_height;
-    public float th_length;
+    public float samplepoints_len =0.9f;
+    public float th_length = 0.2f;
     public List<Vector3> BaseSamplePoints;
     public List<Vector3> ArmSamplePoints;
     public List<Vector3> FootSamplePoints;
@@ -32,6 +33,7 @@ public class HumanEnvDataExtraction : RealTimeAnimation
     public bool b_play = false;
     public bool b_write = false;
     public bool b_vis = false;
+    public bool b_data = false;
     
     // Feature sensors
     public CylinderMap Environment;
@@ -90,21 +92,21 @@ public class HumanEnvDataExtraction : RealTimeAnimation
         JointContactMap = new JointContactMap();
         JointContactMap.JointContactSensors = new JointContactMap.JointContactSensor[12];
 
-        JointContactMap.JointContactSensors[0] = new JointContactMap.JointContactSensor(pelvis, actor_source.Bones[0].GetName(), 0.15f, 30, LayerMask.NameToLayer("Penetration"));
-        JointContactMap.JointContactSensors[1] = new JointContactMap.JointContactSensor(spine_idx, spine.GetName(), 0.15f, 30, LayerMask.NameToLayer("Penetration"));
+        JointContactMap.JointContactSensors[0] = new JointContactMap.JointContactSensor(pelvis, actor_source.Bones[0].GetName(), 0.15f * character_height/1.83f, 30, LayerMask.NameToLayer("Penetration"));
+        JointContactMap.JointContactSensors[1] = new JointContactMap.JointContactSensor(spine_idx, spine.GetName(), 0.15f * character_height / 1.83f, 30, LayerMask.NameToLayer("Penetration"));
 
-        JointContactMap.JointContactSensors[2] = new JointContactMap.JointContactSensor(righthip,rh.GetName(), 0.1f, 30, LayerMask.NameToLayer("Penetration"));
-        JointContactMap.JointContactSensors[3] = new JointContactMap.JointContactSensor(lefthip,lh.GetName(), 0.1f, 30, LayerMask.NameToLayer("Penetration"));
+        JointContactMap.JointContactSensors[2] = new JointContactMap.JointContactSensor(righthip,rh.GetName(), 0.1f * character_height / 1.83f, 30, LayerMask.NameToLayer("Penetration"));
+        JointContactMap.JointContactSensors[3] = new JointContactMap.JointContactSensor(lefthip,lh.GetName(), 0.1f * character_height / 1.83f, 30, LayerMask.NameToLayer("Penetration"));
         
-        JointContactMap.JointContactSensors[4] = new JointContactMap.JointContactSensor(rightelbow, relbow.GetName(), 0.07f, 30, LayerMask.NameToLayer("Penetration"));
-        JointContactMap.JointContactSensors[5] = new JointContactMap.JointContactSensor(righthand, rhand.GetName(), 0.07f, 30, LayerMask.NameToLayer("Penetration"));
-        JointContactMap.JointContactSensors[6] = new JointContactMap.JointContactSensor(leftelbow, lelbow.GetName(), 0.07f, 30, LayerMask.NameToLayer("Penetration"));
-        JointContactMap.JointContactSensors[7] = new JointContactMap.JointContactSensor(lefthand, lhand.GetName(), 0.07f, 30, LayerMask.NameToLayer("Penetration"));
+        JointContactMap.JointContactSensors[4] = new JointContactMap.JointContactSensor(rightelbow, relbow.GetName(), 0.07f * character_height / 1.83f, 30, LayerMask.NameToLayer("Penetration"));
+        JointContactMap.JointContactSensors[5] = new JointContactMap.JointContactSensor(righthand, rhand.GetName(), 0.07f * character_height / 1.83f, 30, LayerMask.NameToLayer("Penetration"));
+        JointContactMap.JointContactSensors[6] = new JointContactMap.JointContactSensor(leftelbow, lelbow.GetName(), 0.07f * character_height / 1.83f, 30, LayerMask.NameToLayer("Penetration"));
+        JointContactMap.JointContactSensors[7] = new JointContactMap.JointContactSensor(lefthand, lhand.GetName(), 0.07f * character_height / 1.83f, 30, LayerMask.NameToLayer("Penetration"));
 
-        JointContactMap.JointContactSensors[8] = new JointContactMap.JointContactSensor(rightfoot, rs.GetName(), 0.1f, 30, LayerMask.NameToLayer("Penetration"));
-        JointContactMap.JointContactSensors[9] = new JointContactMap.JointContactSensor(leftfoot, ls.GetName(), 0.1f, 30, LayerMask.NameToLayer("Penetration"));
-        JointContactMap.JointContactSensors[10] = new JointContactMap.JointContactSensor(righttoe, rss.GetName(), 0.05f, 30, LayerMask.NameToLayer("Penetration"));
-        JointContactMap.JointContactSensors[11] = new JointContactMap.JointContactSensor(lefttoe, lss.GetName(), 0.05f, 30, LayerMask.NameToLayer("Penetration"));
+        JointContactMap.JointContactSensors[8] = new JointContactMap.JointContactSensor(rightfoot, rs.GetName(), 0.1f * character_height / 1.83f, 30, LayerMask.NameToLayer("Penetration"));
+        JointContactMap.JointContactSensors[9] = new JointContactMap.JointContactSensor(leftfoot, ls.GetName(), 0.1f * character_height / 1.83f, 30, LayerMask.NameToLayer("Penetration"));
+        JointContactMap.JointContactSensors[10] = new JointContactMap.JointContactSensor(righttoe, rss.GetName(), 0.02f * character_height / 1.83f, 30, LayerMask.NameToLayer("Penetration"));
+        JointContactMap.JointContactSensors[11] = new JointContactMap.JointContactSensor(lefttoe, lss.GetName(), 0.02f * character_height / 1.83f, 30, LayerMask.NameToLayer("Penetration"));
 
 
         JointLength = new float[actor_source.Bones.Length - 1];
@@ -259,6 +261,13 @@ public class HumanEnvDataExtraction : RealTimeAnimation
         }
 
         // interaction-based environments
+        Debug.Log(" total len" + " joint: " + joint_position.Length +
+            " Env Base: " + Environment.SpaceWeights_Base.Length +
+            " Env Arm: " + Environment.SpaceWeights_Arm.Length +
+            " Env Foot: " + Environment.SpaceWeights_Foot.Length +
+            " Sample Points: " + CircleMap.SamplePoints.Length * 3 +
+            " joint length " + jointlength.Length + " vel " + 3);
+
 
         //// 
         ////Debug.Log("Circle Height Maps " + CircleMap.Map.Length);
@@ -267,11 +276,11 @@ public class HumanEnvDataExtraction : RealTimeAnimation
 
         //Vector3[] direction; float[] mag; float[] weight;
         //int id = _actor.FindBone(JointContactMap.JointContactSensors[4].Name).Index;
-        
+
         //CircleMap.CalcRelativeWeights(_actor.Bones[id].Transform.position, CircleMap.SamplePoints, out direction, out mag, out CircleMap.SampleWeights);
 
         //CircleMap.SampleWeights = weight;
-        
+
     }
 
     private void WriteSampleFeatures(Actor _actor, float[] joint_position, Vector3 root_vel, float[] jointlength,
@@ -297,7 +306,7 @@ public class HumanEnvDataExtraction : RealTimeAnimation
             sb_record = WriteFloat(sb_record, Environment.SpaceWeights_Foot[e], false);
 
         // Sample Points
-        for (int e =0; e < CircleMap.SamplePoints.Length; e++)
+        for (int e = 0; e < CircleMap.SamplePoints.Length; e++)
             sb_record = WritePosition(sb_record, CircleMap.SamplePoints[e], false);
 
         // joint length
@@ -314,7 +323,7 @@ public class HumanEnvDataExtraction : RealTimeAnimation
         //    " Env Base: " + Environment.SpaceWeights_Base.Length + 
         //    " Env Arm: " + Environment.SpaceWeights_Arm.Length +
         //    " Env Foot: " + Environment.SpaceWeights_Foot.Length +
-        //    " Sample Points: " + CircleMap.SamplePoints.Length +
+        //    " Sample Points: " + CircleMap.SamplePoints.Length * 3 +
         //    " joint length " + jointlength.Length + " vel " + 3);
 
 
@@ -440,8 +449,8 @@ public class HumanEnvDataExtraction : RealTimeAnimation
                 update_pose(Frame, _MotionData.Motion, actor_source);
 
                 // Updating randomly selected furniture
-                if (b_data)
-                    RandomSelection();
+                //if (b_data)
+                //    RandomSelection();
                 
                 //Environment.Sense(_MotionData.RootTrajectory[Frame], LayerMask.GetMask("Default", "Interaction"));
                 // Taeil modified : update space spheres
@@ -474,7 +483,7 @@ public class HumanEnvDataExtraction : RealTimeAnimation
                         // Finding Closer Sample Points
                         for(int p=0; p< CircleMap.SampleWeights.Length; p++)
                         {
-                            if (CircleMap.SampleWeights[p] > 0.5f)
+                            if (CircleMap.SampleWeights[p] > samplepoints_len)
                             {
                                 SampleBaseIndices.Add(p);
                             }
@@ -493,7 +502,7 @@ public class HumanEnvDataExtraction : RealTimeAnimation
                             // Finding Closer Sample Points
                             for (int p = 0; p < CircleMap.SampleWeights.Length; p++)
                             {
-                                if (CircleMap.SampleWeights[p] > 0.5f)
+                                if (CircleMap.SampleWeights[p] > samplepoints_len)
                                 {
                                     SampleArmIndices.Add(p);
                                 }
@@ -511,7 +520,7 @@ public class HumanEnvDataExtraction : RealTimeAnimation
                             // Finding Closer Sample Points
                             for (int p = 0; p < CircleMap.SampleWeights.Length; p++)
                             {
-                                if (CircleMap.SampleWeights[p] > 0.5f)
+                                if (CircleMap.SampleWeights[p] > samplepoints_len)
                                 {
                                     SampleFootIndices.Add(p);
                                 }
@@ -533,17 +542,17 @@ public class HumanEnvDataExtraction : RealTimeAnimation
                     out Environment.SpaceWeights_Foot);
 
                 // Directional Weights of Sample points and Space Spheres
-                
+                Debug.Log(" total len" + " joint: " + actor_source.Bones.Length +
+                 " Env Base: " + Environment.SpaceWeights_Base.Length +
+                 " Env Arm: " + Environment.SpaceWeights_Arm.Length +
+                 " Env Foot: " + Environment.SpaceWeights_Foot.Length +
+                 " Sample Points: " + CircleMap.SamplePoints.Length * 3 +
+                 " joint length " + (actor_source.Bones.Length - 1) + " vel " + 3);
 
 
 
                 //for (int j = 0; j < actor_source.Bones.Length; j++)
                 //JointCircleMap.JointSense(actor_source.Bones[15].Transform.localToWorldMatrix, 15);
-
-
-
-
-               
 
                 if (b_write)
                 {
@@ -579,6 +588,10 @@ public class HumanEnvDataExtraction : RealTimeAnimation
                 Frame++;
             }
             
+        }
+        else if(b_data && _MotionData.Motion != null){
+            // Updating current frame
+            update_pose(Frame, _MotionData.Motion, actor_source);
         }
     }
 
@@ -735,10 +748,10 @@ public class HumanEnvDataExtraction : RealTimeAnimation
         }
     }
 
-    [CustomEditor(typeof(HumanEnvDataExtraction), true)]
-    public class HumanEnvDataExtraction_Editor : Editor
+    [CustomEditor(typeof(HumanEnvDataExtractionIITP), true)]
+    public class HumanEnvDataExtractionIITP_Editor : Editor
     {
-        public HumanEnvDataExtraction Target;
+        public HumanEnvDataExtractionIITP Target;
         SerializedProperty selectedOption;
 
         public void SetGameObject(GameObject go, bool ischair)
@@ -761,7 +774,7 @@ public class HumanEnvDataExtraction : RealTimeAnimation
 
         public void Awake()
         {
-            Target = (HumanEnvDataExtraction)target;
+            Target = (HumanEnvDataExtractionIITP)target;
             selectedOption = serializedObject.FindProperty("selectedOption");
         }
         public override void OnInspectorGUI()
@@ -784,7 +797,7 @@ public class HumanEnvDataExtraction : RealTimeAnimation
             EditorGUILayout.EndVertical();
 
             Target.character_height = EditorGUILayout.FloatField("character_height", Target.character_height);
-
+            
             // Assigning Environment Data
             EditorGUILayout.BeginVertical();
             Target.EnvInspector = (GameObject)EditorGUILayout.ObjectField("Source Env", Target.EnvInspector, typeof(GameObject), true);
@@ -851,7 +864,7 @@ public class HumanEnvDataExtraction : RealTimeAnimation
                 if (Target.selectedOption == MotionData_Type.ALL || Target.selectedOption == MotionData_Type.BVH)
                 {
                     Target._MotionData.BVH_inspector();
-                    if(Target._MotionData.BVHFiles != null && Target._MotionData.BVHFiles.Length > 0)
+                    if (Target._MotionData.BVHFiles != null && Target._MotionData.BVHFiles.Length > 0)
                     {
                         //Debug.Log("BVH" + Target._MotionData.BVHFiles.Length);
                         Target._MotionData.Total_FileNumber = Target._MotionData.BVHFiles.Length;
@@ -870,47 +883,47 @@ public class HumanEnvDataExtraction : RealTimeAnimation
                     }
                 }
 
-                if (Target.b_data)
-                {
-                    string lastFolderName = Path.GetFileName(Target._MotionData.DirectoryName);
-                    //Debug.Log("file in folder " + lastFolderName);
-                    Transform parentObject = Target.EnvInspector.transform.Find(lastFolderName);
-                    if (parentObject != null)
-                    {
+                //if (Target.b_data)
+                //{
+                //    string lastFolderName = Path.GetFileName(Target._MotionData.DirectoryName);
+                //    //Debug.Log("file in folder " + lastFolderName);
+                //    Transform parentObject = Target.EnvInspector.transform.Find(lastFolderName);
+                //    if (parentObject != null)
+                //    {
 
-                        if (parentObject.name == "hc_hd" || parentObject.name == "hcw_hdw" || parentObject.name == "lc_ld"
-                           || parentObject.name == "lc_ld_a" || parentObject.name == "lcw_ldw")
-                        {
-                            parentObject.gameObject.SetActive(true);
+                //        if (parentObject.name == "hc_hd" || parentObject.name == "hcw_hdw" || parentObject.name == "lc_ld"
+                //           || parentObject.name == "lc_ld_a" || parentObject.name == "lcw_ldw")
+                //        {
+                //            parentObject.gameObject.SetActive(true);
                             
-                            //Transform hcChild = parentObject.transform.Find("hc");
+                //            //Transform hcChild = parentObject.transform.Find("hc");
 
-                            Transform hcChild  = parentObject.GetChild(0).transform;
-                            if (hcChild != null)
-                            {
-                                hcChild.gameObject.SetActive(true);
-                                Target.Chair_Matrix = hcChild.gameObject;
-                            }
+                //            Transform hcChild  = parentObject.GetChild(0).transform;
+                //            if (hcChild != null)
+                //            {
+                //                hcChild.gameObject.SetActive(true);
+                //                Target.Chair_Matrix = hcChild.gameObject;
+                //            }
 
-                            Transform hdChild = parentObject.GetChild(1).transform;
-                            if (hdChild != null)
-                            {
-                                hdChild.gameObject.SetActive(true);
-                                Target.Desk_Matrix = hdChild.gameObject;
-                            }
-                        }
+                //            Transform hdChild = parentObject.GetChild(1).transform;
+                //            if (hdChild != null)
+                //            {
+                //                hdChild.gameObject.SetActive(true);
+                //                Target.Desk_Matrix = hdChild.gameObject;
+                //            }
+                //        }
 
-                        if(parentObject.name == "board" || parentObject.name == "hc" || parentObject.name == "bed"
-                           || parentObject.name == "hcw" || parentObject.name == "hd" || parentObject.name == "hdw"
-                           || parentObject.name == "lc" || parentObject.name == "lcw" || parentObject.name == "lc_a")
-                        {
-                            parentObject.gameObject.SetActive(true);
-                            Target.Chair_Matrix = parentObject.gameObject;
-                            Target.Desk_Matrix = parentObject.gameObject;
-                        }
+                //        if(parentObject.name == "board" || parentObject.name == "hc" || parentObject.name == "bed"
+                //           || parentObject.name == "hcw" || parentObject.name == "hd" || parentObject.name == "hdw"
+                //           || parentObject.name == "lc" || parentObject.name == "lcw" || parentObject.name == "lc_a")
+                //        {
+                //            parentObject.gameObject.SetActive(true);
+                //            Target.Chair_Matrix = parentObject.gameObject;
+                //            Target.Desk_Matrix = parentObject.gameObject;
+                //        }
                         
-                    }
-                }
+                //    }
+                //}
             }
 
             
@@ -983,7 +996,9 @@ public class HumanEnvDataExtraction : RealTimeAnimation
 
             }
 
-           
+
+            Target.samplepoints_len = EditorGUILayout.FloatField("samplepoints_th", Target.samplepoints_len);
+            Target.th_length = EditorGUILayout.FloatField("th_space_length", Target.th_length);
 
             // Contact Sensors
             if (Target.JointContactMap != null)

@@ -114,7 +114,7 @@ public class JointCircleMap
     public void JointSense(Matrix4x4 pivot, int joint_index)
     {
         // 
-        Debug.Log("num Lati " + numLatitudes + " num Long " + numLongitudes + " nuRays " + numRays);
+        //Debug.Log("num Lati " + numLatitudes + " num Long " + numLongitudes + " nuRays " + numRays);
         for (int i = 0; i < numRays; i++)
         {
             Vector3 dir = CMapInfo.Directions[joint_index, i];
