@@ -246,6 +246,9 @@ public class MotionDataFile : ScriptableObject
     public string DirectoryName;
     public string FileName;
     public int Total_FileNumber = 0;
+    public bool b_play = false;
+    public bool b_data = false;
+    public int CurFrame = 0;
 
     public Actor Character;
 
@@ -515,8 +518,9 @@ public class MotionDataFile : ScriptableObject
             Motion = BVHFiles[fileindex].Motion;
             
             FileName = BVHFiles[fileindex].FILE_Info.Name;
-
+            CurFrame = 0;
             b_true = true;
+            b_data = true;
         }
         else
         {
@@ -741,8 +745,9 @@ public class MotionDataFile : ScriptableObject
             DirectoryName = FBXFiles[fileindex].FILE_Info.DirectoryName;
             FileName = FBXFiles[fileindex].FILE_Info.Name;
 
-
+            CurFrame = 0;
             b_true = true;
+            b_data = true;
         }
         else
         {
@@ -1046,8 +1051,9 @@ public class MotionDataFile : ScriptableObject
             Motion = MotionTextFiles[fileindex].Motion;
             DirectoryName = MotionTextFiles[fileindex].FILE_Info.DirectoryName;
             FileName = MotionTextFiles[fileindex].FILE_Info.Name;
-
+            CurFrame = 0;
             b_true = true;
+            b_data = true;
         }
         else
         {
@@ -1081,7 +1087,45 @@ public class MotionDataFile : ScriptableObject
         return actor;
     }
 
-   
+    public void inspector()
+    {
+
+    }
+    public void Inspector_PlayMode(out int Frame)
+    {
+        //// bool connection
+        //EditorGUILayout.BeginHorizontal();
+        //GUILayout.FlexibleSpace();  // 고정된 여백을 넣습니다.
+        //b_play = EditorGUILayout.Toggle("b_play", b_play);
+        //GUILayout.FlexibleSpace();
+        //EditorGUILayout.EndHorizontal();
+
+        if (Utility.GUIButton("reset & play animation", Color.white, Color.red))
+        {
+            CurFrame = 0;
+            b_play = true;
+
+        }
+        if (b_play == false)
+        {
+            if (Utility.GUIButton("re-play animation", Color.white, Color.red))
+            {
+                b_play = true;
+            }
+        }
+        if (b_play == true)
+        {
+            if (Utility.GUIButton("pause animation", Color.white, Color.red))
+            {
+                b_data = true;
+                b_play = false;
+            }
+        }
+        if (b_play != true && Motion != null)
+            CurFrame = EditorGUILayout.IntSlider(CurFrame, 1, Motion.Length - 1);
+
+        Frame = CurFrame;
+    }
     public void FBX_inspector(Actor _actor)
     {
         EditorGUILayout.BeginHorizontal();
@@ -1215,6 +1259,7 @@ public class MotionDataFile : ScriptableObject
             if (Utility.GUIButton("Motion Loader : Import Motion Text Data", Color.white, Color.red))
             {
                 ImportMotionTextData(selectedData, scale);
+                
             }
 
             EditorGUILayout.EndHorizontal();
